@@ -33,6 +33,7 @@ class TrainingData():
         #self.inputs = numpy.array(self.inputs)
         #self.outputs = numpy.array(self.outputs)
 
+## base class for neural net data and operations
 class NeuralNet():
     def __init__(self):
         self.model = None
@@ -83,30 +84,39 @@ class NeuralNet():
             data = self.reshape_data(data)
         return self.model.predict(data)
 
+## convolutional implementation, unfinished
 class ConvNet(NeuralNet):
 
     def reshape_data(self, data):
+        # for conv. layer, data tensor needs to be shaped into (samples, sample_size, sample_dimensions)
         return data.reshape(-1,600,1)
     
     def build_model(self):
         print("shape: " + str(self.X.shape))
         self.model = Sequential()
+        # 1D convolution
         self.model.add(Conv1D(300, 5, input_shape=(self.X.shape[1], self.X.shape[2])))
         self.model.add(Conv1D(200, 5))
+        # flatten the conv. output into a 1d vector
         self.model.add(Flatten())
+        # densely connected layers for feature classification
         self.model.add(Dense(200, activation='relu', input_dim=INPUT_SIZE))
         #self.model.add(Dense(100, activation='relu', input_dim=INPUT_SIZE))
         
         self.model.add(Dense(64, activation='relu', input_dim=INPUT_SIZE))
+        # output layer
         self.model.add(Dense(OUTPUT_SIZE, activation='sigmoid'))
 
     def compile_model(self):
+        # classifying into 2 categories, can use either bin. or categorical with 2 output classes
         self.model.compile(loss='binary_crossentropy', optimizer='adam', metrics=["accuracy"])
   
 
+## LSTM implementation, proof of concept
 class LstmNet(NeuralNet):
 
     def reshape_data(self, data):
+        # reshape data into a tensor of shape (samples, sample_size)
         return data.reshape(-1,600)
 
     def post_data_load(self):
@@ -116,11 +126,16 @@ class LstmNet(NeuralNet):
         print("X shape: " + str(self.X.shape))
         print("y shape: " + str(self.y.shape))
         self.model = Sequential()
+        # LSTM network needs embedding, easiest (but more computationally expensive) way
+        # is to train an embedding layer along with the net
         self.model.add(Embedding(1000, 256, input_length=self.X.shape[1]))
+        # primary layer
         self.model.add(LSTM(200, recurrent_dropout=0.2, dropout=0.2))
+        # output layer (2-class classifier)
         self.model.add(Dense(2,activation='softmax'))
         
     def compile_model(self):
+        # classifying into categories with dense layer, use corresponding loss function
         self.model.compile(loss = 'categorical_crossentropy', optimizer='adam',metrics = ['accuracy'])
 
 
@@ -132,6 +147,7 @@ def train(weights_filename=None, NNImplementationClass=ConvNet):
     nn = NNImplementationClass()
     nn.set_data(data.inputs, data.outputs)
     nn.build_model()
+    # load pre-trained model
     if not (weights_filename is None):
         nn.load_weights(weights_filename)
     nn.compile_model()
@@ -141,13 +157,16 @@ def train(weights_filename=None, NNImplementationClass=ConvNet):
     nn.fit()
 
 def predict_init(weights_filename, NNImplementationClass=ConvNet):
-    
+
+    # todo: fake training data during predict, useless loading just to automatically
+    # predict shapes
     data = TrainingData(getDataset("dataset/dataset"))
     #print(data.inputs.shape)
     
     nn = NNImplementationClass()
     nn.set_data(data.inputs, data.outputs)
     nn.build_model()
+    # load pre-trained model
     if not (weights_filename is None):
         nn.load_weights(weights_filename)
     nn.compile_model()
